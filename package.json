@@ -1,0 +1,27 @@
+{
+  "name": "addon-helloworld-express",
+  "version": "0.0.1",
+  "description": "Hello World add-on for stremio made with express",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Stremio/addon-helloworld-express"
+  },
+  "keywords": [
+    "stremio",
+    "stremio-addons",
+    "addons"
+  ],
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Stremio/addon-helloworld-express/issues"
+  },
+  "homepage": "https://github.com/Stremio/addon-helloworld-express",
+  "dependencies": {
+    "magnet-uri": "^5.1.3",
+    "express": "^4.16.3"
+  }
+}
