@@ -189,7 +189,25 @@ addon.listen(7000, function() {
 })
 ```
 
-Run the add-on with `npm start` and add `http://127.0.0.1:7000/manifest.json` as the Repository URL in Stremio.
+Run the add-on with `npm start` and add `http://127.0.0.1:7000/manifest.json` as the Add-on Repository URL in Stremio.
+
+Optionally, you can also make this add-on available online, while still hosting it locally, by using [localtunnel](https://www.npmjs.com/package/localtunnel).
+
+To use `localtunnel` with this example, simply do:
+
+```bash
+npm install -g localtunnel
+lt --port 7000
+```
+
+This will typically bring a response such as:
+
+```
+your url is: https://perfect-bird-96.localtunnel.me
+```
+
+In which case you should use `https://perfect-bird-96.localtunnel.me/manifest.json` as your Add-on Repository URL
+
 
 Step 6: result
 ===================
