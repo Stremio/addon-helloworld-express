@@ -34,7 +34,7 @@ git add *
 git commit -a -m "initial commit"
 ```
 
-**NOTE:** to test this add-on, you need to complete Step 3 (init an add-on server). Start the add-on with `node index.js` and add the add-on to stremio by going to the *Addons* page (top right icon) and typing `http://127.0.0.1:7000/manifest.json` in the text field in the top left and pressing enter. 
+**NOTE:** to test this add-on, you need to complete Step 5 (run add-on). Start the add-on with `node index.js` and add the add-on to stremio by going to the *Addons* page (top right icon) and typing `http://127.0.0.1:7000/manifest.json` in the text field in the top left and pressing enter. 
 
 Step 2: Create index.js, fill manifest
 ===========================
@@ -191,7 +191,7 @@ addon.listen(7000, function() {
 
 Run the add-on with `npm start` and add `http://127.0.0.1:7000/manifest.json` as the Repository URL in Stremio.
 
-Step 7: result
+Step 6: result
 ===================
 
 ![addlink](https://user-images.githubusercontent.com/1777923/43146711-65a33ccc-8f6a-11e8-978e-4c69640e63e3.png)
