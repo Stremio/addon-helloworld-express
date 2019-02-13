@@ -9,7 +9,6 @@ var respond = function(res, data) {
     res.send(data);
 };
 
-// FROM Ruby
 var MANIFEST = {
     id: "org.stremio.helloworldexpress",
     version: "1.0.0",
