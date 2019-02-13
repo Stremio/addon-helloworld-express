@@ -46,7 +46,7 @@ Create an `index.js` file:
 var express = require("express")
 var addon = express()
 
-var manifest = { 
+var MANIFEST = { 
     "id": "org.stremio.helloworldexpress",
     "version": "1.0.0",
 
@@ -89,7 +89,7 @@ var respond = function(res, data) {
 }
 
 addon.get('/manifest.json', function (req, res) {
-    respond(res, manifest)
+    respond(res, MANIFEST)
 })
 
 ```
@@ -100,34 +100,68 @@ Step 3: basic streaming
 To implement basic streaming, we will set-up a dummy dataset with a few public domain movies. 
 
 ```javascript
-var dataset = {
-    // Some examples of streams we can serve back to Stremio ; see https://github.com/Stremio/stremio-addon-sdk/blob/master/docs/api/responses/stream.md
-    "tt0051744": { name: "House on Haunted Hill", type: "movie", infoHash: "9f86563ce2ed86bbfedd5d3e9f4e55aedd660960" }, // torrent
-    "tt1254207": { name: "Big Buck Bunny", type: "movie", url: "http://clips.vorwaerts-gmbh.de/big_buck_bunny.mp4", availability: 1 }, // HTTP stream
-    "tt0031051": { name: "The Arizone Kid", type: "movie", yt_id: "m3BKVSpP80s", availability: 3 }, // YouTube stream
-    "tt0137523": { name: "Fight Club", type: "movie", externalUrl: "https://www.netflix.com/watch/26004747" }, // redirects to Netflix
-    "tt1748166:1:1": { name: "Pioneer One", type: "series", infoHash: "07a9de9750158471c3302e4e95edb1107f980fa6" }, // torrent for season 1, episode 1
+var STREAMS = {
+  "movie": {
+    "tt0032138": [
+      { title: "Torrent", infoHash: "24c8802e2624e17d46cd555f364debd949f2c81e", fileIdx: 0 }
+    ],
+    "tt0017136": [
+      { title: "Torrent", infoHash: "dca926c0328bb54d209d82dc8a2f391617b47d7a", fileIdx: 1 }
+    ],
+    "tt0051744": [
+      { title: "Torrent", infoHash: "9f86563ce2ed86bbfedd5d3e9f4e55aedd660960" }
+    ],
+    "tt1254207": [
+      { title: "HTTP URL", url: "http://clips.vorwaerts-gmbh.de/big_buck_bunny.mp4" }
+    ],
+    "tt0031051": [
+      { title: "YouTube", ytId: "m3BKVSpP80s" }
+    ],
+    "tt0137523": [
+      { title: "External URL", externalUrl: "https://www.netflix.com/watch/26004747" }
+    ]
+  },
+
+  "series": {
+    "tt1748166:1:1": [
+      { title: "Torrent", infoHash: "07a9de9750158471c3302e4e95edb1107f980fa6" }
+    ],
+
+    "hrbtt0147753:1:1": [
+      { title: "YouTube", ytId: "5EQw5NYlbyE" }
+    ],
+    "hrbtt0147753:1:2": [
+      { title: "YouTube", ytId: "ZzdBKcVzx9Y" }
+    ],
+  }
 };
 ```
 
 And then implement ``/stream/`` as follows:
 
 ```javascript
-addon.get('/stream/:type/:id.json', function(req, res) {
+addon.get('/stream/:type/:id.json', function(req, res, next) {
+    var streams = STREAMS[req.params.type][req.params.id] || [];
 
-    if (!req.params.id)
-        return respond(res, { streams: [] })
-
-
-    if (dataset[req.params.id]) {
-        respond(res, { streams: [dataset[req.params.id]] });
-    } else
-        respond(res, { streams: [] })
-
-})
+    respond(res, { streams: streams });
+});
 ```
 
-**As you can see, this is an add-on that allows Stremio to stream 4 public domain movies and 1 series episode - in very few lines of code.**
+Now let's make sure that the ``/stream/`` can not be called with invalid stream type. We can check against the types defined in our manifest.
+
+Put this snippet before the ``/stream/`` handler:
+
+```javascript
+addon.param('type', function(req, res, next, val) {
+    if(MANIFEST.types.includes(val)) {
+        next();
+    } else {
+        next("Unsupported type " + val);
+    }
+});
+```
+
+**As you can see, this is an add-on that allows Stremio to stream 6 public domain movies and 3 series episode - in very few lines of code.**
 
 Depending on your source, you can implement streaming (`/stream/`) or catalogs (`/catalog/`) of ``movie``, ``series``, ``channel`` or ``tv`` content types.
 
@@ -147,35 +181,60 @@ We have 2 types of resources serving meta:
 Append to index.js:
 
 ```javascript
-var METAHUB_URL = 'https://images.metahub.space'
+var util = require("util");
 
-var basicMeta = function(data, index) {
-    // To provide basic meta for our movies for the catalog
-    // we'll fetch the poster from Stremio's MetaHub
-    var imdbId = index.split(':')[0]
-    return {
-        id: imdbId,
-        type: data.type,
-        name: data.name,
-        poster: METAHUB_URL+'/poster/medium/'+imdbId+'/img',
+var METAHUB_URL = 'https://images.metahub.space/poster/medium/%s/img';
+
+var CATALOG = {
+  "movie": [
+    { id: "tt0032138", name: "The Wizard of Oz", genres: [ "Adventure", "Family", "Fantasy", "Musical" ] },
+    { id: "tt0017136", name: "Metropolis", genres: ["Drama", "Sci-Fi"] },
+    { id: "tt0051744", name: "House on Haunted Hill", genres: ["Horror", "Mystery"] },
+    { id: "tt1254207", name: "Big Buck Bunny", genres: ["Animation", "Short", "Comedy"], },
+    { id: "tt0031051", name: "The Arizona Kid", genres: ["Music", "War", "Western"] },
+    { id: "tt0137523", name: "Fight Club", genres: ["Drama"] }
+  ],
+  "series": [
+    {
+      id: "tt1748166",
+      name: "Pioneer One",
+      genres: ["Drama"],
+      videos: [
+        { season: 1, episode: 1, id: "tt1748166:1:1", title: "Earthfall", released: "2010-06-16"  }
+      ]
+    },
+    {
+      id: "hrbtt0147753",
+      name: "Captain Z-Ro",
+      description: "From his secret laboratory, Captain Z-Ro and his associates use their time machine, the ZX-99, to learn from the past and plan for the future.",
+      releaseInfo: "1955-1956",
+      logo: "https://fanart.tv/fanart/tv/70358/hdtvlogo/captain-z-ro-530995d5e979d.png",
+      imdbRating: 6.9,
+      genres: ["Sci-Fi"],
+      videos: [
+        { season: 1, episode: 1, id: "hrbtt0147753:1:1", title: "Christopher Columbus", released: "1955-12-18" },
+        { season: 1, episode: 2, id: "hrbtt0147753:1:2", title: "Daniel Boone", released: "1955-12-25" }
+      ]
     }
-}
+  ]
+};
 
-addon.get('/catalog/:type/:id.json', function(req, res) {
+addon.get('/catalog/:type/:id.json', function(req, res, next) {
+    var metas = CATALOG[req.params.type].map(function(item) {
+        return {
+            id: item.id,
+            type: req.params.type,
+            name: item.name,
+            genres: item.genres,
+            poster: util.format(METAHUB_URL, item.id)
+        };
+    });
 
-    var metas = []
-
-    // iterate dataset object and only add movies or series
-    // depending on the requested type
-    for (var key in dataset) {
-        if (req.params.type == dataset[key].type) {
-            metas.push(basicMeta(dataset[key], key))
-        }
-    }
-
-    respond(res, { metas: metas })
-})
+    respond(res, { metas: metas });
+});
 ```
+We don't need to worry about invalid stream types as we declared ``type`` parameter validation in the previous step.
+
 
 Step 5: run addon
 ===================
