@@ -5,7 +5,6 @@ This example shows how to make a Stremio Add-on with Node.js and [Express](https
 
 Alternatively, you can also see how to make a Stremio Add-on with Stremio's [Add-on SDK](https://github.com/Stremio/stremio-addon-sdk) at [Stremio Add-on Hello World](https://github.com/Stremio/addon-helloworld).
 
-
 ## Quick Start
 
 ```bash
@@ -14,7 +13,6 @@ npm start
 ```
 
 Then run Stremio, click the add-on button (puzzle piece icon) on the top right, and write `http://127.0.0.1:7000/manifest.json` in the "Addon Repository Url" field on the top left.
-
 
 ## Basic tutorial on how to re-create this add-on step by step
 
@@ -47,61 +45,66 @@ var express = require("express")
 var addon = express()
 
 var MANIFEST = { 
-    "id": "org.stremio.helloworldexpress",
-    "version": "1.0.0",
+  id: "org.stremio.helloworldexpress",
+  version: "1.0.0",
 
-    "name": "Hello World Express Addon",
-    "description": "Sample addon made with Express providing a few public domain movies",
+  name: "Hello World Express Addon",
+  description: "Sample addon made with Express providing a few public domain movies",
 
-//    "icon": "URL to 256x256 monochrome png icon", 
-//    "background": "URL to 1024x786 png/jpg background",
+  //"icon": "URL to 256x256 monochrome png icon", 
+  //"background": "URL to 1024x786 png/jpg background",
 
-    // set what type of resources we will return
-    "resources": [
-        "catalog",
-        "stream"
-    ],
+  types: ["movie", "series"], // your add-on will be preferred for those content types
 
-    "types": ["movie", "series"], // your add-on will be preferred for those content types
+  // set what type of resources we will return
+  resources: [],
 
-    // set catalogs, we'll be making 2 catalogs in this case, 1 for movies and 1 for series
-    "catalogs": [
-        {
-            type: 'movie',
-            id: 'helloworldmovies'
-        },
-        {
-            type: 'series',
-            id: 'helloworldseries'
-        }
-    ],
+  // set catalogs, we'll be making 2 catalogs in this case, 1 for movies and 1 for series
+  catalogs: [],
 
-    // prefix of item IDs (ie: "tt0032138")
-    "idPrefixes": [ "tt" ]
-
+  // prefix of item IDs (ie: "tt0032138")
+  idPrefixes: [ "tt" ]
 };
 
-var respond = function(res, data) {
-    res.setHeader('Access-Control-Allow-Origin', '*')
-    res.setHeader('Access-Control-Allow-Headers', '*')
-    res.setHeader('Content-Type', 'application/json')
-    res.send(data)
-}
+var respond = function (res, data) {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Headers', '*');
+  res.setHeader('Content-Type', 'application/json');
+  res.send(data);
+};
 
 addon.get('/manifest.json', function (req, res) {
-    respond(res, MANIFEST)
-})
+  respond(res, MANIFEST);
+});
 
 ```
 
 Step 3: basic streaming
 ==============================
 
-To implement basic streaming, we will set-up a dummy dataset with a few public domain movies. 
+To implement basic streaming, we need to update the manifest so Stremio will know that our add-on provides streams. We need to add `stream` to the `resources` array.
+
+Just change:
+
+```javascript
+  // set what type of resources we will return
+  resources: [],
+```
+
+to
+
+```javascript
+  // set what type of resources we will return
+  resources: [
+    "stream"
+  ],
+```
+
+Then we will set-up a dummy dataset with a few public domain movies.
 
 ```javascript
 var STREAMS = {
-  "movie": {
+  movie: {
     "tt0032138": [
       { title: "Torrent", infoHash: "24c8802e2624e17d46cd555f364debd949f2c81e", fileIdx: 0 }
     ],
@@ -122,46 +125,39 @@ var STREAMS = {
     ]
   },
 
-  "series": {
+  series: {
     "tt1748166:1:1": [
       { title: "Torrent", infoHash: "07a9de9750158471c3302e4e95edb1107f980fa6" }
-    ],
-
-    "hrbtt0147753:1:1": [
-      { title: "YouTube", ytId: "5EQw5NYlbyE" }
-    ],
-    "hrbtt0147753:1:2": [
-      { title: "YouTube", ytId: "ZzdBKcVzx9Y" }
-    ],
+    ]
   }
 };
 ```
 
-And then implement ``/stream/`` as follows:
+And finally we will implement the ``/stream/`` as follows:
 
 ```javascript
-addon.get('/stream/:type/:id.json', function(req, res, next) {
-    var streams = STREAMS[req.params.type][req.params.id] || [];
+addon.get('/stream/:type/:id.json', function (req, res, next) {
+  var streams = STREAMS[req.params.type][req.params.id] || [];
 
-    respond(res, { streams: streams });
+  respond(res, { streams: streams });
 });
 ```
 
 Now let's make sure that the ``/stream/`` can not be called with invalid stream type. We can check against the types defined in our manifest.
 
-Put this snippet before the ``/stream/`` handler:
+Put this snippet **before** the ``/stream/`` handler:
 
 ```javascript
-addon.param('type', function(req, res, next, val) {
-    if(MANIFEST.types.includes(val)) {
-        next();
-    } else {
-        next("Unsupported type " + val);
-    }
+addon.param('type', function (req, res, next, val) {
+  if (MANIFEST.types.includes(val)) {
+    next();
+  } else {
+    next("Unsupported type " + val);
+  }
 });
 ```
 
-**As you can see, this is an add-on that allows Stremio to stream 6 public domain movies and 3 series episode - in very few lines of code.**
+**As you can see, this is an add-on that allows Stremio to stream 6 public domain movies and 1 series episode - in very few lines of code.**
 
 Depending on your source, you can implement streaming (`/stream/`) or catalogs (`/catalog/`) of ``movie``, ``series``, ``channel`` or ``tv`` content types.
 
@@ -178,7 +174,23 @@ We have 2 types of resources serving meta:
 
 **For now, we have the simple goal of loading the movies we provide on the top of Discover.**
 
-Append to index.js:
+We need to update our manifest once again, so Stremio will try to pull the suplied catalogs. We must populate our `resources` and `catalogs` arrays with the desired data.
+
+```javascript
+  // set what type of resources we will return
+  resources: [
+    "catalog",
+    "stream"
+  ],
+
+  // set catalogs, we'll be making 2 catalogs in this case, 1 for movies and 1 for series
+  catalogs: [
+    { type: "movie", id: "Hello World" },
+    { type: "series", id: "Hello World" }
+  ],
+```
+
+Then apend to index.js:
 
 ```javascript
 var util = require("util");
@@ -186,55 +198,42 @@ var util = require("util");
 var METAHUB_URL = 'https://images.metahub.space/poster/medium/%s/img';
 
 var CATALOG = {
-  "movie": [
-    { id: "tt0032138", name: "The Wizard of Oz", genres: [ "Adventure", "Family", "Fantasy", "Musical" ] },
+  movie: [
+    { id: "tt0032138", name: "The Wizard of Oz", genres: ["Adventure", "Family", "Fantasy", "Musical"] },
     { id: "tt0017136", name: "Metropolis", genres: ["Drama", "Sci-Fi"] },
     { id: "tt0051744", name: "House on Haunted Hill", genres: ["Horror", "Mystery"] },
     { id: "tt1254207", name: "Big Buck Bunny", genres: ["Animation", "Short", "Comedy"], },
     { id: "tt0031051", name: "The Arizona Kid", genres: ["Music", "War", "Western"] },
     { id: "tt0137523", name: "Fight Club", genres: ["Drama"] }
   ],
-  "series": [
+  series: [
     {
       id: "tt1748166",
       name: "Pioneer One",
       genres: ["Drama"],
       videos: [
-        { season: 1, episode: 1, id: "tt1748166:1:1", title: "Earthfall", released: "2010-06-16"  }
-      ]
-    },
-    {
-      id: "hrbtt0147753",
-      name: "Captain Z-Ro",
-      description: "From his secret laboratory, Captain Z-Ro and his associates use their time machine, the ZX-99, to learn from the past and plan for the future.",
-      releaseInfo: "1955-1956",
-      logo: "https://fanart.tv/fanart/tv/70358/hdtvlogo/captain-z-ro-530995d5e979d.png",
-      imdbRating: 6.9,
-      genres: ["Sci-Fi"],
-      videos: [
-        { season: 1, episode: 1, id: "hrbtt0147753:1:1", title: "Christopher Columbus", released: "1955-12-18" },
-        { season: 1, episode: 2, id: "hrbtt0147753:1:2", title: "Daniel Boone", released: "1955-12-25" }
+        { season: 1, episode: 1, id: "tt1748166:1:1", title: "Earthfall", released: "2010-06-16" }
       ]
     }
   ]
 };
 
-addon.get('/catalog/:type/:id.json', function(req, res, next) {
-    var metas = CATALOG[req.params.type].map(function(item) {
-        return {
-            id: item.id,
-            type: req.params.type,
-            name: item.name,
-            genres: item.genres,
-            poster: util.format(METAHUB_URL, item.id)
-        };
-    });
+addon.get('/catalog/:type/:id.json', function (req, res, next) {
+  var metas = CATALOG[req.params.type].map(function (item) {
+    return {
+      id: item.id,
+      type: req.params.type,
+      name: item.name,
+      genres: item.genres,
+      poster: util.format(METAHUB_URL, item.id)
+    };
+  });
 
-    respond(res, { metas: metas });
+  respond(res, { metas: metas });
 });
 ```
-We don't need to worry about invalid stream types as we declared ``type`` parameter validation in the previous step.
 
+We don't need to worry about invalid stream types as we declared ``type`` parameter validation in the previous step.
 
 Step 5: run addon
 ===================
@@ -242,9 +241,10 @@ Step 5: run addon
 It's time to run our add-on!
 
 Append to index.js:
+
 ```javascript
 addon.listen(7000, function() {
-    console.log('Add-on Repository URL: http://127.0.0.1:7000/manifest.json')
+  console.log('Add-on Repository URL: http://127.0.0.1:7000/manifest.json')
 })
 ```
 
@@ -261,9 +261,7 @@ lt --port 7000
 
 This will typically bring a response such as:
 
-```
-your url is: https://perfect-bird-96.localtunnel.me
-```
+> your url is: https://perfect-bird-96.localtunnel.me
 
 In which case you should use `https://perfect-bird-96.localtunnel.me/manifest.json` as your Add-on Repository URL
 
