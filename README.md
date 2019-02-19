@@ -190,7 +190,7 @@ We need to update our manifest once again, so Stremio will try to pull the supli
   ],
 ```
 
-Then apend to index.js:
+Then append to index.js:
 
 ```javascript
 var util = require("util");
